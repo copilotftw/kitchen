@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kitchen 3D — U-Shaped Cockpit</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0a0f; overflow: hidden; font-family: 'Inter', 'Segoe UI', sans-serif; }
+  canvas { display: block; }
+
+  #legend {
+    position: fixed; top: 20px; left: 20px;
+    background: rgba(15,15,25,0.92); backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.08); border-radius: 12px;
+    padding: 18px 22px; color: #e0e0e0; font-size: 13px;
+    min-width: 220px; z-index: 10;
+  }
+  #legend h2 { font-size: 15px; font-weight: 600; margin-bottom: 12px; color: #fff; letter-spacing: 0.5px; }
+  .legend-item { display: flex; align-items: center; margin-bottom: 7px; }
+  .legend-swatch {
+    width: 14px; height: 14px; border-radius: 3px; margin-right: 10px; flex-shrink: 0;
+    border: 1px solid rgba(255,255,255,0.15);
+  }
+
+  #tooltip {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: rgba(15,15,25,0.92); backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.1); border-radius: 10px;
+    padding: 14px 24px; color: #fff; font-size: 14px;
+    z-index: 10; pointer-events: none; text-align: center;
+    transition: opacity 0.2s;
+  }
+  #tooltip .label { font-weight: 600; font-size: 15px; margin-bottom: 4px; }
+  #tooltip .dims { color: #aaa; font-size: 12px; }
+
+  #controls-hint {
+    position: fixed; bottom: 20px; right: 20px;
+    background: rgba(15,15,25,0.8); border-radius: 8px;
+    padding: 10px 16px; color: #888; font-size: 11px; z-index: 10;
+  }
+</style>
+</head>
+<body>
+
+<div id="legend">
+  <h2>Kitchen 3D</h2>
+  <div class="legend-item"><div class="legend-swatch" style="background:#5C3A21"></div>Walnut Cabinets</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#888"></div>Appliances</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#C9B18C"></div>Travertino Countertop</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#6b3a3a"></div>Chimney Pillar (structural)</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#0a0a10"></div>Hood (LC91KLT65 black glass)</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:rgba(180,60,60,0.5)"></div>Utility Void</div>
+</div>
+
+<div id="tooltip" style="opacity:0">
+  <div class="label" id="tip-label"></div>
+  <div class="dims" id="tip-dims"></div>
+</div>
+
+<div id="controls-hint">Drag to rotate &middot; Scroll to zoom &middot; Right-drag to pan</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.164.1/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.164.1/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0e0e14);
+scene.fog = new THREE.FogExp2(0x0e0e14, 0.0004);
+
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 2000);
+camera.position.set(350, 350, 450);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(176, 45, 143);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.minDistance = 100;
+controls.maxDistance = 1000;
+controls.maxPolarAngle = Math.PI / 2.05;
+
+// Lights
+scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+const dirLight = new THREE.DirectionalLight(0xfff5e6, 1.2);
+dirLight.position.set(200, 400, -100);
+dirLight.castShadow = true;
+dirLight.shadow.mapSize.set(2048, 2048);
+dirLight.shadow.camera.left = -400; dirLight.shadow.camera.right = 400;
+dirLight.shadow.camera.top = 400; dirLight.shadow.camera.bottom = -400;
+scene.add(dirLight);
+scene.add(new THREE.DirectionalLight(0xc0d0ff, 0.3).translateX(-200).translateY(200).translateZ(300));
+const pt = new THREE.PointLight(0xffeedd, 0.5, 500);
+pt.position.set(176, 200, 143);
+scene.add(pt);
+
+// Materials — walnut cabinets + Travertino countertop
+const M = {
+  north: new THREE.MeshStandardMaterial({ color: 0x5C3A21, roughness: 0.65, metalness: 0.05 }),
+  west:  new THREE.MeshStandardMaterial({ color: 0x5C3A21, roughness: 0.65, metalness: 0.05 }),
+  pen:   new THREE.MeshStandardMaterial({ color: 0x5C3A21, roughness: 0.65, metalness: 0.05 }),
+  app:   new THREE.MeshStandardMaterial({ color: 0x666672, roughness: 0.3, metalness: 0.6 }),
+  ctr:   new THREE.MeshStandardMaterial({ color: 0xC9B18C, roughness: 0.35, metalness: 0.05 }),
+  chim:  new THREE.MeshStandardMaterial({ color: 0x6b3a3a, roughness: 0.8 }),
+  void_: new THREE.MeshStandardMaterial({ color: 0xb43c3c, roughness: 0.8, transparent: true, opacity: 0.3 }),
+  wall:  new THREE.MeshStandardMaterial({ color: 0xf0ece6, roughness: 0.9, metalness: 0 }),
+  floor: new THREE.MeshStandardMaterial({ color: 0xC4A06A, roughness: 0.7, metalness: 0.02 }),
+  pli:   new THREE.MeshStandardMaterial({ color: 0x2A1A0E, roughness: 0.9 }),
+  sink:  new THREE.MeshStandardMaterial({ color: 0x888899, roughness: 0.2, metalness: 0.8 }),
+  cook:  new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.05, metalness: 0.3 }),
+  hood:  new THREE.MeshStandardMaterial({ color: 0x444450, roughness: 0.3, metalness: 0.7 }),
+  fridge:new THREE.MeshStandardMaterial({ color: 0xd0d0d5, roughness: 0.3, metalness: 0.4 }),
+  oven:  new THREE.MeshStandardMaterial({ color: 0x222228, roughness: 0.2, metalness: 0.5 }),
+  glass: new THREE.MeshStandardMaterial({ color: 0x0a0a10, roughness: 0.02, metalness: 0.4 }),
+  winGlass: new THREE.MeshStandardMaterial({ color: 0x8ec8e8, roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.35 }),
+};
+
+const interactive = [];
+const PL = 15, CA = 72, BH = 87, CT = 3, TOP = 90, CEIL = 270;
+
+function box(w, d, h, sx, sy, sz, mat, name, dims) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  m.position.set(sx + w/2, sz + h/2, sy + d/2);
+  m.castShadow = true; m.receiveShadow = true;
+  m.userData = { name, dims };
+  scene.add(m);
+  interactive.push(m);
+  return m;
+}
+
+// Helper: create extruded shape from floor-plan polygon
+// points = [[specX, specY], ...], h = height, sz = Z offset
+function extrudedShape(points, h, sz, mat, name, dims) {
+  const shape = new THREE.Shape();
+  shape.moveTo(points[0][0], -points[0][1]);
+  for (let i = 1; i < points.length; i++) shape.lineTo(points[i][0], -points[i][1]);
+  shape.closePath();
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: h, bevelEnabled: false });
+  geo.rotateX(-Math.PI / 2);
+  const m = new THREE.Mesh(geo, mat);
+  m.position.set(0, sz, 0);
+  m.castShadow = true; m.receiveShadow = true;
+  m.userData = { name, dims };
+  scene.add(m);
+  interactive.push(m);
+  return m;
+}
+
+// Floor + grid
+const fl = new THREE.Mesh(new THREE.PlaneGeometry(500, 400), M.floor);
+fl.rotation.x = -Math.PI/2; fl.position.set(200, 0, 170); fl.receiveShadow = true;
+scene.add(fl);
+const gr = new THREE.GridHelper(500, 50, 0xa08050, 0xb89868);
+gr.position.set(200, 0.1, 170); scene.add(gr);
+
+// Walls (white paint)
+box(352, 5, CEIL, 0, -5, 0, M.wall, 'North Wall', '');
+// West wall with 2 windows (X=0)
+// Window 1: Y=0→66, Window 2: Y=196→286
+// Each window: sill Z=80, height 100cm → Z=100→200
+const WIN_SILL = 100, WIN_H = 100, WIN_TOP = WIN_SILL + WIN_H; // 180
+// Below both windows (full length, Z=0→80)
+box(5, 295, WIN_SILL, -5, -5, 0, M.wall, 'West Wall (below windows)', '');
+// Above both windows (full length, Z=180→ceiling)
+box(5, 295, CEIL - WIN_TOP, -5, -5, WIN_TOP, M.wall, 'West Wall (above windows)', '');
+// Between windows (Y=66→196, Z=80→180) — solid section behind cooktop/hood
+box(5, 130, WIN_H, -5, 66, WIN_SILL, M.wall, 'West Wall (between windows)', '');
+// After window 2 (Y=286→290, Z=100→200)
+box(5, 9, WIN_H, -5, 286, WIN_SILL, M.wall, 'West Wall (after win 2)', '');
+// Window panes (transparent glass)
+box(2, 66, WIN_H, -4, 0, WIN_SILL, M.winGlass, 'Window 1', 'Y=0→66, sill 80cm, H=100cm');
+box(2, 90, WIN_H, -4, 196, WIN_SILL, M.winGlass, 'Window 2', 'Y=196→286, sill 80cm, H=100cm');
+
+// === NORTH WALL (Y=0→66, front flush at Y=66) ===
+// Diagonal corner cabinet: (0,0)→(83.5,0)→(83.5,66)→(60,83)→(0,83)
+const cornerPts = [[0,0],[83.5,0],[83.5,66],[60,83],[0,83]];
+extrudedShape(cornerPts, CA, PL, M.north, 'Top Corner Cabinet', '83.5×83cm, diagonal face (83.5,66)→(60,83)');
+extrudedShape(cornerPts, PL, 0, M.pli, 'Plinth', '');
+
+box(90, 66, CA, 83.5, 0, PL, M.north, 'Sink Base Cabinet', '90cm, sink + Quooker + waste');
+box(90, 66, PL, 83.5, 0, 0, M.pli, 'Plinth', '');
+box(70, 45, 5, 93.5, 10, TOP-2, M.sink, 'Blanco ETAGON 700-U', '70cm undermount sink');
+
+box(60, 66, CA, 173.5, 0, PL, M.app, 'Bosch Dishwasher', '60cm, XXL tub, fully integrated');
+box(60, 66, PL, 173.5, 0, 0, M.pli, 'Plinth', '');
+
+box(58.5, 53.5, CEIL, 233.5, 0, 0, M.chim, 'Chimney Pillar', '58.5cm x 53.5cm, structural, floor to ceiling');
+// Base cabinet in front of chimney (Y=53.5→66, full counter height, walnut top)
+box(58.5, 12.5, CA, 233.5, 53.5, PL, M.north, 'Chimney Base Cabinet', '12.5cm deep, counter height');
+box(58.5, 12.5, PL, 233.5, 53.5, 0, M.pli, 'Plinth', '');
+box(58.5, 12.5, CT, 233.5, 53.5, BH, M.north, 'Chimney Base Top', 'Walnut top (no Travertino here)');
+// Open shelves above counter (Z=90→ceiling, 5 shelves)
+// Height from counter to ceiling: 260-90 = 170cm, 5 shelves create 6 compartments
+// Shelf spacing: 170/6 ≈ 28.3cm
+{
+  const shelfW = 58.5, shelfD = 12.5, shelfThick = 2;
+  const shelfX = 233.5, shelfY = 53.5;
+  const panelThick = 2;
+  const spacing = (CEIL - TOP) / 6;
+  // 5 shelf boards
+  for (let i = 1; i <= 5; i++) {
+    const sz = TOP + spacing * i - shelfThick/2;
+    box(shelfW, shelfD, shelfThick, shelfX, shelfY, sz, M.north,
+      'Open Shelf ' + i, 'Z≈' + Math.round(sz) + 'cm, 12.5cm deep');
+  }
+  // Side panels (left + right)
+  box(panelThick, shelfD, CEIL - TOP, shelfX, shelfY, TOP, M.north, 'Shelf Side Panel', 'Left');
+  box(panelThick, shelfD, CEIL - TOP, shelfX + shelfW - panelThick, shelfY, TOP, M.north, 'Shelf Side Panel', 'Right');
+  // Back panel against chimney face
+  box(shelfW, panelThick, CEIL - TOP, shelfX, shelfY, TOP, M.north, 'Shelf Back Panel', 'Against chimney');
+}
+
+box(60, 6, CEIL, 292, 0, 0, M.wall, 'Pipe Void', '6cm sealed void behind fridge');
+// Fridge integrated — walnut cabinet front
+box(60, 60, 177, 292, 6, 0, M.north, 'Liebherr Fridge (integrated)', '60cm x 177cm, walnut panel front');
+box(60, 66, CEIL-177, 292, 0, 177, M.north, 'Fridge Housing Top', 'Ventilation grille here');
+
+// North wall countertop — stops at chimney pillar (X=0→233.5)
+box(233.5, 66, CT, 0, 0, BH, M.ctr, 'North Wall Countertop', 'Travertino, X=0→233.5');
+
+// Upper cabinets above sink + DW (2 equal-width cabinets)
+// Total span: X=83.5→233.5 = 150cm, each 75cm wide
+// Bottom at Z = TOP + 50 = 140, top at CEIL = 270, depth ~33cm
+{
+  const ucBot = TOP + 50; // 50cm above countertop
+  const ucH = CEIL - ucBot; // 130cm tall
+  const ucD = 33; // standard upper cabinet depth
+  box(75, ucD, ucH, 83.5, 0, ucBot, M.north, 'Upper Cabinet 1 (above sink)', '75cm wide, Z=140→270');
+  box(75, ucD, ucH, 158.5, 0, ucBot, M.north, 'Upper Cabinet 2 (above DW)', '75cm wide, Z=140→270');
+}
+
+// === WEST WALL (X=0→60) ===
+box(60, 90, CA, 0, 83, PL, M.west, 'Cooktop Base Cabinet', '90cm, 80cm hob centered');
+box(60, 90, PL, 0, 83, 0, M.pli, 'Plinth', '');
+box(52, 80, 3, 4, 88, TOP-1, M.cook, 'Siemens Cooktop', '80cm induction, iQ700 studioLine');
+box(60, 113, CT, 0, 83, BH, M.ctr, 'West Wall Countertop', 'Dekton 20mm');
+// Diagonal corner countertop matching the cabinet shape
+const cornerCtrPts = [[0,66],[83.5,66],[60,83],[0,83]];
+extrudedShape(cornerCtrPts, CT, BH, M.ctr, 'Corner Countertop', 'Diagonal, bridges north and west');
+
+// Siemens LC91KLT65 Kopffreihaube (90cm angled wall-mount hood)
+// W=89cm, H=45cm, D=44.7cm (angled black glass panel)
+// Kopffreihaube: bottom edge CLOSE to wall (head clearance),
+// panel angles OUTWARD going up, widest at top (~44.7cm from wall)
+{
+  const hW = 89;           // width along wall (spec Y)
+  const hH = 45;           // glass panel height (spec Z)
+  const hDBot = 10;        // depth at bottom edge — close to wall (head clearance)
+  const hDTop = 44.7;      // depth at top edge — widest, captures rising steam
+  const hThick = 4;        // panel housing thickness
+  const hBotZ = TOP + 45;  // Z=135, bottom of hood
+  const hTopZ = hBotZ + hH;// Z=180, top of glass panel
+  const hCtrY = 128;       // centered on cooktop
+  const hY0 = hCtrY - hW/2;// Y=83.5
+  const hY1 = hY0 + hW;   // Y=172.5
+
+  // Angled glass panel — custom geometry (tilted prism)
+  // Bottom close to wall, top sticks out into room
+  // Three.js coords: x=specX, y=specZ(height), z=specY(along wall)
+  const v = new Float32Array([
+    // Front face (room-facing, outer surface)
+    hDBot,          hBotZ, hY0,   // 0: bot-front-left (close to wall)
+    hDBot,          hBotZ, hY1,   // 1: bot-front-right
+    hDTop,          hTopZ, hY1,   // 2: top-front-right (far from wall)
+    hDTop,          hTopZ, hY0,   // 3: top-front-left
+    // Back face (wall-facing, inner surface)
+    hDBot-hThick,   hBotZ, hY0,   // 4: bot-back-left
+    hDBot-hThick,   hBotZ, hY1,   // 5: bot-back-right
+    hDTop-hThick,   hTopZ, hY1,   // 6: top-back-right
+    hDTop-hThick,   hTopZ, hY0,   // 7: top-back-left
+  ]);
+  const idx = [
+    0,1,2, 0,2,3,   // front
+    4,6,5, 4,7,6,   // back
+    3,2,6, 3,6,7,   // top
+    0,5,1, 0,4,5,   // bottom
+    0,3,7, 0,7,4,   // left side
+    1,5,6, 1,6,2,   // right side
+  ];
+  const glassGeo = new THREE.BufferGeometry();
+  glassGeo.setAttribute('position', new THREE.BufferAttribute(v, 3));
+  glassGeo.setIndex(idx);
+  glassGeo.computeVertexNormals();
+  const glassMesh = new THREE.Mesh(glassGeo, M.glass);
+  glassMesh.castShadow = true;
+  glassMesh.receiveShadow = true;
+  glassMesh.userData = { name: 'Siemens LC91KLT65', dims: '89cm Kopffreihaube, iQ700, angled black glass' };
+  scene.add(glassMesh);
+  interactive.push(glassMesh);
+
+  // Bottom intake grille (narrow, close to wall)
+  box(hDBot + 5, hW, 2, 0, hY0, hBotZ - 2, M.hood, 'Hood Intake Grille', 'Bottom air intake');
+
+  // Chimney cover (rectangular tube, wall-mounted above glass panel)
+  const chimW = 36, chimD = 18;
+  const chimH = CEIL - 20 - hTopZ;
+  box(chimD, chimW, chimH, 1, hCtrY - chimW/2, hTopZ,
+    M.hood, 'Hood Chimney Cover', 'Adjustable, houses exhaust duct');
+}
+
+box(60, 23, CA, 0, 173, PL, M.west, 'Towel/Board Cabinet', '23cm Y, hallway door at X=0');
+box(60, 23, PL, 0, 173, 0, M.pli, 'Plinth', '');
+
+// === PENINSULA (Y=196→286) ===
+box(60, 30, CA, 0, 196, PL, M.void_, 'Utility Void', '30cm, route power + oven electrical');
+box(60, 30, PL, 0, 196, 0, M.pli, 'Plinth', '');
+
+box(60, 60, CA, 60, 196, PL, M.pen, 'Robot Vacuum Dock', '60cm, Dreame L10s Pro Ultra Heat');
+box(60, 60, PL, 60, 196, 0, M.pli, 'Plinth', '');
+box(34, 45.7, 59, 73, 201, 0, M.app, 'Dreame Dock Station', '340x457x590mm');
+
+// Oven hidden inside cabinet (not visible from countertop)
+box(60, 60, CA, 120, 196, PL, M.pen, 'Oven Cabinet', '60cm, oven inside (Siemens CM978GQB1)');
+box(60, 60, PL, 120, 196, 0, M.pli, 'Plinth', '');
+
+box(80, 60, CA, 180, 196, PL, M.pen, '80cm Mega Drawer', 'Primary prep storage');
+box(80, 60, PL, 180, 196, 0, M.pli, 'Plinth', '');
+
+box(60, 60, CA, 0, 226, PL, M.pen, 'Corner Cabinet 60cm', 'LR access, left-hinge door');
+box(60, 60, PL, 0, 226, 0, M.pli, 'Plinth', '');
+
+box(60, 30, CA, 60, 256, PL, M.pen, 'Cabinet B', '60cm x 30cm, backs robot dock');
+box(60, 30, PL, 60, 256, 0, M.pli, 'Plinth', '');
+
+// Bar seating zone — oven & mega drawer are 60cm deep only
+// X=120→260, Y=256→286 is OPEN for stool knee clearance (no cabinet)
+// Only corner cab and cab B have LR-facing cabinets
+
+// Peninsula countertop — one continuous L-shaped piece with overhangs
+// Main kitchen counter: X=0→260, Y=196→256 (over cabinets)
+box(260, 60, CT, 0, 196, BH, M.ctr, 'Peninsula Counter', 'Dekton 20mm, over kitchen cabinets');
+// Bar overhang (LR side): X=0→260, Y=256→286 (30cm overhang past oven/mega drawer)
+// X=0→120 sits on corner cab + cab B, X=120→260 is cantilevered for stools
+box(260, 30, CT, 0, 256, BH, M.ctr, 'Bar Overhang (30cm)', '30cm overhang, open under X=120→260 for stools');
+// Side overhang: X=260→292, Y=196→286 (32cm, no cabinet below — cantilevered)
+box(32, 90, CT, 260, 196, BH, M.ctr, 'Side Overhang (32cm)', 'Cantilevered, L-corner needs steel frame');
+
+// Corridor marker lines
+function line(pts, col) {
+  const g = new THREE.BufferGeometry().setFromPoints(pts.map(p => new THREE.Vector3(...p)));
+  scene.add(new THREE.Line(g, new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: 0.35 })));
+}
+line([[0,0.5,66],[352,0.5,66]], 0x4a7ab5);
+line([[0,0.5,196],[292,0.5,196]], 0xc47a3a);
+line([[320,0.5,66],[320,0.5,196]], 0xffffff);
+line([[315,0.5,66],[325,0.5,66]], 0xffffff);
+line([[315,0.5,196],[325,0.5,196]], 0xffffff);
+
+// Labels
+function label(text, x, y, z, s=10) {
+  const c = document.createElement('canvas');
+  const ctx = c.getContext('2d'); c.width = 512; c.height = 64;
+  ctx.font = 'bold 28px Inter, sans-serif';
+  ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center';
+  ctx.fillText(text, 256, 40);
+  const t = new THREE.CanvasTexture(c); t.needsUpdate = true;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, opacity: 0.7 }));
+  sp.position.set(x, y, z); sp.scale.set(s*8, s, 1);
+  scene.add(sp);
+}
+
+label('SINK', 128.5, TOP+15, 33, 8);
+label('DW', 203.5, TOP+15, 33, 7);
+label('FRIDGE', 322, 100, 36, 8);
+label('COOKTOP', 30, TOP+15, 128, 8);
+label('HOOD', 30, TOP+60, 128, 7);
+label('OVEN', 150, TOP+15, 226, 7);
+label('DOCK', 90, TOP+15, 226, 7);
+label('MEGA DRAWER', 220, TOP+15, 226, 8);
+label('CHIMNEY', 262, 150, 27, 7);
+label('130cm', 330, 25, 131, 7);
+label('BAR', 190, TOP+15, 271, 8);
+label('VOID', 30, 50, 211, 6);
+
+// Hover
+const ray = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+const tip = document.getElementById('tooltip');
+const tipL = document.getElementById('tip-label');
+const tipD = document.getElementById('tip-dims');
+let hov = null;
+
+renderer.domElement.addEventListener('mousemove', e => {
+  mouse.x = (e.clientX / innerWidth) * 2 - 1;
+  mouse.y = -(e.clientY / innerHeight) * 2 + 1;
+});
+
+function hover() {
+  if (hov && hov.material.emissive) hov.material.emissive.setHex(0);
+  hov = null;
+  ray.setFromCamera(mouse, camera);
+  const hits = ray.intersectObjects(interactive);
+  if (hits.length && hits[0].object.userData.name && !hits[0].object.userData.name.startsWith('Plinth')) {
+    hov = hits[0].object;
+    if (hov.material.emissive) hov.material.emissive.setHex(0x222222);
+    tipL.textContent = hov.userData.name;
+    tipD.textContent = hov.userData.dims || '';
+    tip.style.opacity = '1';
+  } else {
+    tip.style.opacity = '0';
+  }
+}
+
+(function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  hover();
+  renderer.render(scene, camera);
+})();
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+</script>
+</body>
+</html>
