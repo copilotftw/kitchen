@@ -174,8 +174,8 @@ gr.position.set(200, 0.1, 170); scene.add(gr);
 box(352, 5, CEIL, 0, -5, 0, M.wall, 'North Wall', '');
 // West wall with 2 windows (X=0)
 // Window 1: Y=0→66, Window 2: Y=196→286
-// Each window: sill Z=80, height 100cm → Z=100→200
-const WIN_SILL = 100, WIN_H = 100, WIN_TOP = WIN_SILL + WIN_H; // 180
+// Each window: sill Z=80, height 100cm → Z=100→240
+const WIN_SILL = 100, WIN_H = 140, WIN_TOP = WIN_SILL + WIN_H; // 180
 // Below both windows (full length, Z=0→80)
 box(5, 295, WIN_SILL, -5, -5, 0, M.wall, 'West Wall (below windows)', '');
 // Above both windows (full length, Z=180→ceiling)
