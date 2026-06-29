@@ -9,19 +9,8 @@
   body { background: #0a0a0f; overflow: hidden; font-family: 'Inter', 'Segoe UI', sans-serif; }
   canvas { display: block; }
 
-  #legend {
-    position: fixed; top: 20px; left: 20px;
-    background: rgba(15,15,25,0.92); backdrop-filter: blur(12px);
-    border: 1px solid rgba(255,255,255,0.08); border-radius: 12px;
-    padding: 18px 22px; color: #e0e0e0; font-size: 13px;
-    min-width: 220px; z-index: 10;
-  }
-  #legend h2 { font-size: 15px; font-weight: 600; margin-bottom: 12px; color: #fff; letter-spacing: 0.5px; }
-  .legend-item { display: flex; align-items: center; margin-bottom: 7px; }
-  .legend-swatch {
-    width: 14px; height: 14px; border-radius: 3px; margin-right: 10px; flex-shrink: 0;
-    border: 1px solid rgba(255,255,255,0.15);
-  }
+
+
 
   #tooltip {
     position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
@@ -43,15 +32,7 @@
 </head>
 <body>
 
-<div id="legend">
-  <h2>Kitchen 3D</h2>
-  <div class="legend-item"><div class="legend-swatch" style="background:#5C3A21"></div>Walnut Cabinets</div>
-  <div class="legend-item"><div class="legend-swatch" style="background:#888"></div>Appliances</div>
-  <div class="legend-item"><div class="legend-swatch" style="background:#C9B18C"></div>Travertino Countertop</div>
-  <div class="legend-item"><div class="legend-swatch" style="background:#6b3a3a"></div>Chimney Pillar (structural)</div>
-  <div class="legend-item"><div class="legend-swatch" style="background:#0a0a10"></div>Hood (LC91KLT65 black glass)</div>
-  <div class="legend-item"><div class="legend-swatch" style="background:rgba(180,60,60,0.5)"></div>Utility Void</div>
-</div>
+
 
 <div id="tooltip" style="opacity:0">
   <div class="label" id="tip-label"></div>
@@ -123,7 +104,7 @@ const M = {
   wall:  new THREE.MeshStandardMaterial({ color: 0xf0ece6, roughness: 0.9, metalness: 0 }),
   floor: new THREE.MeshStandardMaterial({ color: 0xC4A06A, roughness: 0.7, metalness: 0.02 }),
   pli:   new THREE.MeshStandardMaterial({ color: 0x2A1A0E, roughness: 0.9 }),
-  sink:  new THREE.MeshStandardMaterial({ color: 0x888899, roughness: 0.2, metalness: 0.8 }),
+  sink:  new THREE.MeshStandardMaterial({ color: 0x333338, roughness: 0.3, metalness: 0.6 }),
   cook:  new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.05, metalness: 0.3 }),
   hood:  new THREE.MeshStandardMaterial({ color: 0x444450, roughness: 0.3, metalness: 0.7 }),
   fridge:new THREE.MeshStandardMaterial({ color: 0xd0d0d5, roughness: 0.3, metalness: 0.4 }),
@@ -174,19 +155,19 @@ gr.position.set(200, 0.1, 170); scene.add(gr);
 box(352, 5, CEIL, 0, -5, 0, M.wall, 'North Wall', '');
 // West wall with 2 windows (X=0)
 // Window 1: Y=0→66, Window 2: Y=196→286
-// Each window: sill Z=80, height 100cm → Z=100→240
-const WIN_SILL = 100, WIN_H = 140, WIN_TOP = WIN_SILL + WIN_H; // 180
-// Below both windows (full length, Z=0→80)
+// Each window: sill Z=95, height 140cm → Z=95→235
+const WIN_SILL = 95, WIN_H = 140, WIN_TOP = WIN_SILL + WIN_H; // 235
+// Below both windows (full length, Z=0→95)
 box(5, 295, WIN_SILL, -5, -5, 0, M.wall, 'West Wall (below windows)', '');
-// Above both windows (full length, Z=180→ceiling)
+// Above both windows (full length, Z=235→ceiling)
 box(5, 295, CEIL - WIN_TOP, -5, -5, WIN_TOP, M.wall, 'West Wall (above windows)', '');
-// Between windows (Y=66→196, Z=80→180) — solid section behind cooktop/hood
+// Between windows (Y=66→196, Z=95→235) — solid section behind cooktop/hood
 box(5, 130, WIN_H, -5, 66, WIN_SILL, M.wall, 'West Wall (between windows)', '');
-// After window 2 (Y=286→290, Z=100→200)
+// After window 2 (Y=286→290, Z=95→235)
 box(5, 9, WIN_H, -5, 286, WIN_SILL, M.wall, 'West Wall (after win 2)', '');
 // Window panes (transparent glass)
-box(2, 66, WIN_H, -4, 0, WIN_SILL, M.winGlass, 'Window 1', 'Y=0→66, sill 80cm, H=100cm');
-box(2, 90, WIN_H, -4, 196, WIN_SILL, M.winGlass, 'Window 2', 'Y=196→286, sill 80cm, H=100cm');
+box(2, 66, WIN_H, -4, 0, WIN_SILL, M.winGlass, 'Window 1', 'Y=0→66, sill 95cm, H=140cm');
+box(2, 90, WIN_H, -4, 196, WIN_SILL, M.winGlass, 'Window 2', 'Y=196→286, sill 95cm, H=140cm');
 
 // === NORTH WALL (Y=0→66, front flush at Y=66) ===
 // Diagonal corner cabinet: (0,0)→(83.5,0)→(83.5,66)→(60,83)→(0,83)
@@ -196,7 +177,9 @@ extrudedShape(cornerPts, PL, 0, M.pli, 'Plinth', '');
 
 box(90, 66, CA, 83.5, 0, PL, M.north, 'Sink Base Cabinet', '90cm, sink + Quooker + waste');
 box(90, 66, PL, 83.5, 0, 0, M.pli, 'Plinth', '');
-box(70, 45, 5, 93.5, 10, TOP-2, M.sink, 'Blanco ETAGON 700-U', '70cm undermount sink');
+// Blanco ETAGON 700-U: overall 730×460mm, bowl 700×400×200mm, undermount
+// 20cm deep basin, top 1cm below counter bottom to avoid Z-fighting
+box(73, 46, 20, 92, 10, BH - 21, M.sink, 'Blanco ETAGON 700-U', '73×46cm, bowl 20cm deep, undermount');
 
 box(60, 66, CA, 173.5, 0, PL, M.app, 'Bosch Dishwasher', '60cm, XXL tub, fully integrated');
 box(60, 66, PL, 173.5, 0, 0, M.pli, 'Plinth', '');
@@ -232,8 +215,36 @@ box(60, 6, CEIL, 292, 0, 0, M.wall, 'Pipe Void', '6cm sealed void behind fridge'
 box(60, 60, 177, 292, 6, 0, M.north, 'Liebherr Fridge (integrated)', '60cm x 177cm, walnut panel front');
 box(60, 66, CEIL-177, 292, 0, 177, M.north, 'Fridge Housing Top', 'Ventilation grille here');
 
-// North wall countertop — stops at chimney pillar (X=0→233.5)
-box(233.5, 66, CT, 0, 0, BH, M.ctr, 'North Wall Countertop', 'Travertino, X=0→233.5');
+// North wall countertop with sink cutout (undermount)
+// Countertop: X=0→233.5, Y=0→66
+// Sink bowl cutout: 70×40cm, centered in sink footprint (X=93.5→163.5, Y=13→53)
+{
+  const ctrShape = new THREE.Shape();
+  ctrShape.moveTo(0, 0);
+  ctrShape.lineTo(233.5, 0);
+  ctrShape.lineTo(233.5, -66);
+  ctrShape.lineTo(0, -66);
+  ctrShape.closePath();
+
+  // Sink bowl cutout hole (70×40cm) — REVERSED winding for proper hole
+  const sinkHole = new THREE.Path();
+  sinkHole.moveTo(93.5, -13);
+  sinkHole.lineTo(93.5, -53);
+  sinkHole.lineTo(163.5, -53);
+  sinkHole.lineTo(163.5, -13);
+  sinkHole.closePath();
+  ctrShape.holes.push(sinkHole);
+
+  const ctrGeo = new THREE.ExtrudeGeometry(ctrShape, { depth: CT, bevelEnabled: false });
+  ctrGeo.rotateX(-Math.PI / 2);
+  const ctrMesh = new THREE.Mesh(ctrGeo, M.ctr);
+  ctrMesh.position.set(0, BH, 0);
+  ctrMesh.castShadow = true;
+  ctrMesh.receiveShadow = true;
+  ctrMesh.userData = { name: 'North Wall Countertop', dims: 'Travertino, X=0→233.5, sink cutout 70×40cm' };
+  scene.add(ctrMesh);
+  interactive.push(ctrMesh);
+}
 
 // Upper cabinets above sink + DW (2 equal-width cabinets)
 // Total span: X=83.5→233.5 = 150cm, each 75cm wide
@@ -244,12 +255,27 @@ box(233.5, 66, CT, 0, 0, BH, M.ctr, 'North Wall Countertop', 'Travertino, X=0→
   const ucD = 33; // standard upper cabinet depth
   box(75, ucD, ucH, 83.5, 0, ucBot, M.north, 'Upper Cabinet 1 (above sink)', '75cm wide, Z=140→270');
   box(75, ucD, ucH, 158.5, 0, ucBot, M.north, 'Upper Cabinet 2 (above DW)', '75cm wide, Z=140→270');
+
+  // Under-cabinet LED strip lights
+  const ledMat = new THREE.MeshStandardMaterial({ color: 0xfff5e0, emissive: 0xfff5e0, emissiveIntensity: 0.8, roughness: 0.1 });
+  box(75, 2, 1, 83.5, 31, ucBot - 1, ledMat, 'LED Strip 1', 'Under-cabinet light');
+  box(75, 2, 1, 158.5, 31, ucBot - 1, ledMat, 'LED Strip 2', 'Under-cabinet light');
+
+  // Point lights for actual illumination on counter
+  const ucLight1 = new THREE.PointLight(0xfff0d6, 0.6, 120, 1.5);
+  ucLight1.position.set(83.5 + 37.5, ucBot - 3, 16);
+  scene.add(ucLight1);
+  const ucLight2 = new THREE.PointLight(0xfff0d6, 0.6, 120, 1.5);
+  ucLight2.position.set(158.5 + 37.5, ucBot - 3, 16);
+  scene.add(ucLight2);
 }
 
 // === WEST WALL (X=0→60) ===
 box(60, 90, CA, 0, 83, PL, M.west, 'Cooktop Base Cabinet', '90cm, 80cm hob centered');
 box(60, 90, PL, 0, 83, 0, M.pli, 'Plinth', '');
-box(52, 80, 3, 4, 88, TOP-1, M.cook, 'Siemens Cooktop', '80cm induction, iQ700 studioLine');
+// Siemens EX80BNVV6E: 792×512×56mm, flush-mounted
+// Sits slightly above countertop to avoid Z-fighting
+box(51.2, 79.2, 5.6, 4.4, 88.4, TOP - 4, M.cook, 'Siemens EX80BNVV6E', '79.2×51.2cm, H=5.6cm, flush induction');
 box(60, 113, CT, 0, 83, BH, M.ctr, 'West Wall Countertop', 'Dekton 20mm');
 // Diagonal corner countertop matching the cabinet shape
 const cornerCtrPts = [[0,66],[83.5,66],[60,83],[0,83]];
